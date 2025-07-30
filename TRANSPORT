@@ -1,0 +1,65 @@
+[Traffic Cameras / Simulated Sensors]
+             ↓
+       [Computer Vision Module]
+     (e.g., OpenCV + YOLO/SSD)
+             ↓
+      [Traffic Density Estimator]
+             ↓
+     [Reinforcement Learning Agent]
+   (e.g., DQN / PPO using PyTorch or TF)
+             ↓
+     [Traffic Light Controller API]
+             ↓
+     [Streamlit Dashboard for Monitoring]
+
+
+import gym
+from gym import spaces
+import numpy as np
+
+class TrafficEnv(gym.Env):
+    def __init__(self):
+        super(TrafficEnv, self).__init__()
+        self.observation_space = spaces.Box(low=0, high=100, shape=(4,), dtype=np.int32)  # e.g., car counts in 4 lanes
+        self.action_space = spaces.Discrete(2)  # 0: keep current light, 1: switch lights
+        self.state = np.array([10, 12, 5, 7])  # example car counts
+
+    def step(self, action):
+        reward = self._calculate_reward(action)
+        self.state = self._simulate_traffic(action)
+        done = False  # Simulate endlessly for now
+        return self.state, reward, done, {}
+
+    def reset(self):
+        self.state = np.random.randint(0, 20, size=(4,))
+        return self.state
+
+    def _simulate_traffic(self, action):
+        # Simplified logic: simulate how action changes congestion
+        return np.random.randint(0, 20, size=(4,))
+
+    def _calculate_reward(self, action):
+        return -np.sum(self.state)  # Minimize total wait
+from stable_baselines3 import DQN
+from stable_baselines3.common.env_checker import check_env
+
+env = TrafficEnv()
+check_env(env)
+
+model = DQN("MlpPolicy", env, verbose=1)
+model.learn(total_timesteps=10000)
+
+model.save("dqn_traffic")
+import streamlit as st
+
+st.title("Smart Traffic Light Control Dashboard")
+
+traffic_state = env.reset()
+st.write("Initial Traffic State:", traffic_state)
+
+if st.button("Simulate Next Step"):
+    action, _states = model.predict(traffic_state)
+    traffic_state, reward, done, _ = env.step(action)
+    st.write("Action Taken:", "Switch Light" if action == 1 else "Keep Current")
+    st.write("New Traffic State:", traffic_state)
+    st.write("Reward:", reward)
